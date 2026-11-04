@@ -1,0 +1,227 @@
+{
+  "version": 1,
+  "source": "synthetic",
+  "name": "North Basin · Dry gas depletion",
+  "model": "gas",
+  "units": "FIELD",
+  "params": {
+    "pi": 4200,
+    "temperature": 190,
+    "N": 85000000,
+    "G": 180000000000,
+    "m": 0,
+    "swi": 0.22,
+    "cf": 0,
+    "cw": 0,
+    "bw": 1.03,
+    "pb": 2800,
+    "rsi": 650,
+    "api": 35,
+    "gasGravity": 0.7,
+    "zi": null,
+    "caq": 12000,
+    "injection": true,
+    "bwi": 1.03,
+    "bgi": null
+  },
+  "pvt": {
+    "mode": "correlation",
+    "table": [],
+    "extrapolate": false
+  },
+  "aquifer": "none",
+  "history": [
+    {
+      "id": "demo-gas-0",
+      "date": "2020-01-01",
+      "np": 0,
+      "gp": 0,
+      "wp": 0,
+      "wi": 0,
+      "gi": 0,
+      "pressure": 4200,
+      "use": true
+    },
+    {
+      "id": "demo-gas-1",
+      "date": "2020-04-01",
+      "np": 0,
+      "gp": 5468346442.771303,
+      "wp": 0,
+      "wi": 0,
+      "gi": 0,
+      "pressure": 4025,
+      "use": true
+    },
+    {
+      "id": "demo-gas-2",
+      "date": "2020-07-01",
+      "np": 0,
+      "gp": 11186918432.060219,
+      "wp": 0,
+      "wi": 0,
+      "gi": 0,
+      "pressure": 3850,
+      "use": true
+    },
+    {
+      "id": "demo-gas-3",
+      "date": "2020-10-01",
+      "np": 0,
+      "gp": 17165651327.271,
+      "wp": 0,
+      "wi": 0,
+      "gi": 0,
+      "pressure": 3675,
+      "use": true
+    },
+    {
+      "id": "demo-gas-4",
+      "date": "2021-01-01",
+      "np": 0,
+      "gp": 23413039310.707233,
+      "wp": 0,
+      "wi": 0,
+      "gi": 0,
+      "pressure": 3500,
+      "use": true
+    },
+    {
+      "id": "demo-gas-5",
+      "date": "2021-04-01",
+      "np": 0,
+      "gp": 29935471536.543144,
+      "wp": 0,
+      "wi": 0,
+      "gi": 0,
+      "pressure": 3325,
+      "use": true
+    },
+    {
+      "id": "demo-gas-6",
+      "date": "2021-07-01",
+      "np": 0,
+      "gp": 36736422272.548225,
+      "wp": 0,
+      "wi": 0,
+      "gi": 0,
+      "pressure": 3150,
+      "use": true
+    },
+    {
+      "id": "demo-gas-7",
+      "date": "2021-10-01",
+      "np": 0,
+      "gp": 43815499088.82762,
+      "wp": 0,
+      "wi": 0,
+      "gi": 0,
+      "pressure": 2975,
+      "use": true
+    },
+    {
+      "id": "demo-gas-8",
+      "date": "2022-01-01",
+      "np": 0,
+      "gp": 51167381084.00086,
+      "wp": 0,
+      "wi": 0,
+      "gi": 0,
+      "pressure": 2800,
+      "use": true
+    },
+    {
+      "id": "demo-gas-9",
+      "date": "2022-04-01",
+      "np": 0,
+      "gp": 58780722381.8708,
+      "wp": 0,
+      "wi": 0,
+      "gi": 0,
+      "pressure": 2625,
+      "use": true
+    },
+    {
+      "id": "demo-gas-10",
+      "date": "2022-07-01",
+      "np": 0,
+      "gp": 66637152788.230865,
+      "wp": 0,
+      "wi": 0,
+      "gi": 0,
+      "pressure": 2450,
+      "use": true
+    },
+    {
+      "id": "demo-gas-11",
+      "date": "2022-10-01",
+      "np": 0,
+      "gp": 74710566639.5653,
+      "wp": 0,
+      "wi": 0,
+      "gi": 0,
+      "pressure": 2275,
+      "use": true
+    },
+    {
+      "id": "demo-gas-12",
+      "date": "2023-01-01",
+      "np": 0,
+      "gp": 82966929474.75948,
+      "wp": 0,
+      "wi": 0,
+      "gi": 0,
+      "pressure": 2100,
+      "use": true
+    },
+    {
+      "id": "demo-gas-13",
+      "date": "2023-04-01",
+      "np": 0,
+      "gp": 91364818322.65755,
+      "wp": 0,
+      "wi": 0,
+      "gi": 0,
+      "pressure": 1925,
+      "use": true
+    },
+    {
+      "id": "demo-gas-14",
+      "date": "2023-07-01",
+      "np": 0,
+      "gp": 99856818435.34671,
+      "wp": 0,
+      "wi": 0,
+      "gi": 0,
+      "pressure": 1750,
+      "use": true
+    },
+    {
+      "id": "demo-gas-15",
+      "date": "2023-10-01",
+      "np": 0,
+      "gp": 108391728195.33649,
+      "wp": 0,
+      "wi": 0,
+      "gi": 0,
+      "pressure": 1575,
+      "use": true
+    },
+    {
+      "id": "demo-gas-16",
+      "date": "2024-01-01",
+      "np": 0,
+      "gp": 116917319516.36038,
+      "wp": 0,
+      "wi": 0,
+      "gi": 0,
+      "pressure": 1400,
+      "use": true
+    }
+  ],
+  "display": {
+    "tab": "Dashboard",
+    "corrected": true,
+    "extrapolatePz": false
+  }
+}
