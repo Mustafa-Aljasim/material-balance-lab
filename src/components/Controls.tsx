@@ -56,7 +56,13 @@ export function Controls({
           <ChevronDown size={14} />
         </summary>
         {field("pi", "Initial pressure · pᵢ", "pressure", 1, [1000, 7000])}
-        {field("temperature", "Temperature", "temperature")}
+        {s.pvt.mode === "correlation" ? (
+          field("temperature", "Temperature", "temperature")
+        ) : (
+          <p className="micro">
+            Temperature is not used to infer missing table properties.
+          </p>
+        )}
         {s.model === "oil" &&
           field("pb", "Bubble-point pressure · Pᵦ", "pressure")}
       </details>
@@ -133,17 +139,27 @@ export function Controls({
               ? "Vasquez–Beggs + DAK"
               : "Sutton + DAK"}
         </div>
-        {field(
-          "gasGravity",
-          s.model === "oil"
-            ? "Gas gravity · γgc (100 psig)"
-            : "Gas gravity · γg",
-        )}
-        {s.model === "oil" && (
+        {s.pvt.mode === "correlation" ? (
           <>
-            {field("api", "Oil gravity · °API")}
-            {field("rsi", "Initial solution GOR · Rsi", "rs")}
+            {field(
+              "gasGravity",
+              s.model === "oil"
+                ? "Gas gravity · γgc (100 psig)"
+                : "Gas gravity · γg",
+            )}
+            {s.model === "oil" && (
+              <>
+                {field("api", "Oil gravity · °API")}
+                {field("rsi", "Initial solution GOR · Rsi", "rs")}
+              </>
+            )}
           </>
+        ) : (
+          <p className="micro">
+            Initial fluid properties come from the table. Correlation
+            temperature, gravity and Rsi inputs do not override it; review the
+            selected values and any missing properties in PVT QC.
+          </p>
         )}
         <button className="text-button" onClick={() => setTab("PVT")}>
           Review PVT model <span>↗</span>

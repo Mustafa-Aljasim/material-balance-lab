@@ -80,18 +80,27 @@ export function historyIssues(rows: HistoryRow[], pi?: number): string[] {
   if (rows.length > 2000) issues.push("History exceeds 2,000 rows.");
   rows.forEach((r, i) => {
     const tag = `Row ${i + 1}`;
-    try {
-      normalizeDate(r.date);
-    } catch {
-      issues.push(`${tag}: date is missing or invalid.`);
-    }
-    if (dates.has(r.date)) issues.push(`${tag}: duplicate date ${r.date}.`);
-    dates.add(r.date);
+    const observation =
+      r.date === "" &&
+      typeof r.observation === "string" &&
+      r.observation.trim().length > 0;
+    if (!observation)
+      try {
+        normalizeDate(r.date);
+      } catch {
+        issues.push(`${tag}: date is missing or invalid.`);
+      }
+    const label = r.date || r.observation || "";
+    if (dates.has(label))
+      issues.push(`${tag}: duplicate date/observation ${label}.`);
+    dates.add(label);
     if (!r.id || ids.has(r.id))
       issues.push(`${tag}: missing or duplicate row ID.`);
     ids.add(r.id);
-    if (i && r.date <= rows[i - 1].date)
+    if (i && !observation && r.date <= rows[i - 1].date)
       issues.push(`${tag}: dates must be strictly increasing.`);
+    if (i && !!r.date !== !!rows[0].date)
+      issues.push(`${tag}: do not mix dated and undated observations.`);
     for (const k of ["np", "gp", "wp", "wi", "gi"] as const) {
       if (!Number.isFinite(r[k]) || r[k] < 0)
         issues.push(

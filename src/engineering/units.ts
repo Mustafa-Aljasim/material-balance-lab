@@ -21,7 +21,19 @@ const factors: Record<Exclude<Quantity, "temperature">, number> = {
   fvf: 1,
   dimensionless: 1,
 };
-export function fromField(value: number, q: Quantity, u: Units): number {
+export function fromField(value: number, q: Quantity, u: Units): number;
+export function fromField(value: null, q: Quantity, u: Units): null;
+export function fromField(
+  value: number | null,
+  q: Quantity,
+  u: Units,
+): number | null;
+export function fromField(
+  value: number | null,
+  q: Quantity,
+  u: Units,
+): number | null {
+  if (value === null) return null;
   return u === "FIELD"
     ? value
     : q === "temperature"

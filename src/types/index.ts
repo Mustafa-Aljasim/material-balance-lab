@@ -23,19 +23,24 @@ export interface Parameters {
 export interface PVT {
   pressure: number;
   bo: number;
-  rs: number;
-  bg: number;
+  rs: number | null;
+  bg: number | null;
   bw: number;
-  z: number;
+  z: number | null;
 }
 export interface PVTConfig {
   mode: "correlation" | "table";
   table: PVT[];
   extrapolate: boolean;
+  oilMode?: "black-oil" | "undersaturated";
+  source?: string;
+  suppliedColumns?: string[];
+  constantBw?: number;
 }
 export interface HistoryRow {
   id: string;
   date: string;
+  observation?: string;
   np: number;
   gp: number;
   wp: number;
@@ -55,6 +60,7 @@ export interface Scenario {
   aquifer: "none" | "pot";
   history: HistoryRow[];
   display: { tab: string; corrected: boolean; extrapolatePz: boolean };
+  assumptions?: string[];
 }
 export interface Balance {
   p: number;
@@ -63,6 +69,9 @@ export interface Balance {
   F: number;
   Eo: number;
   Eg: number;
+  EgBase?: number | null;
+  rockBase?: number;
+  simplifiedOil?: boolean;
   Efw: number;
   Et: number;
   We: number;
@@ -86,5 +95,7 @@ export interface RootResult {
   root: number;
   iterations: number;
   residual: number;
+  warnings?: string[];
+  candidates?: number[];
 }
 export type PVTProvider = (p: number) => PVT;

@@ -179,12 +179,17 @@ export function Methodology({ model }: { model: Model }) {
         </p>
         <p>
           Uploaded PVT values are piecewise-linearly interpolated in pressure,
-          independently for Bo, Rs, Bg, Bw and Z. No extrapolation occurs unless
-          expressly enabled. Bg and Z may not remain perfectly thermodynamically
-          consistent between coarse laboratory points; p/Z reference is
-          suppressed if the discrepancy exceeds 0.5%. Both the diagnostics and
-          pressure solver call the same PVT provider. Correlations are estimates
-          and do not replace representative laboratory PVT.
+          independently for supplied properties. Oil Z is optional. Above-Pb
+          Bo-only tables use m=0 and constant associated solution gas
+          cancellation, with no invented Rs/Bg. Bw requires a supplied table or
+          an explicitly approved constant. The PVT QC panel shows
+          selected-source initial properties and suspect trends. No
+          extrapolation occurs unless expressly enabled. Bg and Z may not remain
+          perfectly thermodynamically consistent between coarse laboratory
+          points; p/Z reference is suppressed if the discrepancy exceeds 0.5%.
+          Both the diagnostics and pressure solver call the same PVT provider.
+          Correlations are estimates and do not replace representative
+          laboratory PVT.
         </p>
       </section>
       <section className="card">
@@ -207,15 +212,19 @@ export function Methodology({ model }: { model: Model }) {
         <h3>Independent pressure prediction & manual matching</h3>
         <p>
           At every history row the engine solves support(p) − withdrawal(p) = 0
-          without reading measured pressure or Use. It searches outward from pi
-          for the closest sign change over 100 bracket intervals and bisects to
-          an absolute pressure tolerance of 10⁻⁶ psi (up to 100 iterations).
-          Correlation searches are limited to supported reduced pressure and a
-          maximum max(1.6pi, pi + 1000 psi); a table restricts the bracket to
-          its coverage unless extrapolation is enabled. No bracket, unsupported
-          properties or nonconvergence produce an explicit missing prediction
-          and warning. Under extreme injection or nonmonotone/inconsistent PVT a
-          unique physical root is not guaranteed.
+          without reading measured pressure or Use. It scans 100 intervals
+          across the supported domain, including pi, Pb and all table knots, and
+          bisects detected sign changes to 10⁻¹⁰ psi (up to 100 iterations).
+          Final closure must satisfy max(10⁻⁴ rb, 10⁻⁸ of the larger
+          withdrawal/support magnitude). Multiple detected roots produce an
+          ambiguity warning; nearest pi is displayed, but fitting rejects
+          ambiguous candidates. Finite scanning can miss tangent or tightly
+          spaced roots. Correlation searches are limited to supported reduced
+          pressure and a maximum max(1.6pi, pi + 1000 psi); a table restricts
+          the bracket to its coverage unless extrapolation is enabled. No
+          bracket, unsupported properties or nonconvergence produce an explicit
+          missing prediction and warning. Under extreme injection or
+          nonmonotone/inconsistent PVT a unique physical root is not guaranteed.
         </p>
         <MathBlock
           equation={String.raw`r_i=p_{calc,i}-p_{meas,i},\quad RMSE=\sqrt{\frac{1}{n}\sum r_i^2},\quad MAE=\frac{1}{n}\sum |r_i|`}
@@ -225,13 +234,42 @@ export function Methodology({ model }: { model: Model }) {
           solved counts are both reported. A failed active row must not be
           overlooked when interpreting a small RMSE. Excluding a survey does not
           remove its production history. Manual sliders change N/G, m and Caq.
-          No optimizer is implemented. Rate histories use interval-ending
-          rectangular integration by default or optional trapezoidal
-          integration; cumulatives are never averaged.
+          Oil Auto Match supports bounded N, N+m or N+Pot Caq: golden-section
+          search for N, deterministic grid seeding and bounded Nelder–Mead for
+          two parameters. Every active survey must have a unique valid root. PVT
+          and unselected inputs stay fixed. Review before/after pressure errors,
+          convergence, boundary warnings and finite-difference
+          sensitivity/correlation; a good fit does not establish unique
+          parameters. Rate histories use interval-ending rectangular integration
+          by default or optional trapezoidal integration; cumulatives are never
+          averaged.
         </p>
       </section>
       <section className="card">
-        <h3>Synthetic known-answer cases</h3>
+        <h3>Gas-cap parameter interpretation</h3>
+        <MathBlock
+          equation={String.raw`K=B_{oi}\frac{c_f+S_{wi}c_w}{1-S_{wi}}(p_i-p),\quad \frac{F-W_e}{E_o+K}=N+Nm\frac{E_g^0+K}{E_o+K}`}
+        />
+        <p>
+          Here Eg⁰ = Boi(Bg/Bgi−1) excludes m. The general intercept/slope fit
+          includes m in the rock multiplier through K. When compressibility is
+          zero it reduces to F/Eo versus Eg⁰/Eo. Strong coefficient correlation,
+          extrapolation to the intercept and rounded PVT can make N and m poorly
+          determined. The Dake workspace quantifies rounding and leave-one-out
+          sensitivity.
+        </p>
+      </section>
+      <section className="card">
+        <h3>Published-source checks & synthetic known-answer cases</h3>
+        <p>
+          Engineering QC & Case Studies separates verified term arithmetic from
+          incomplete field reconstructions. Virginia Hills retains its
+          published-answer discrepancy; Dake verifies the approximate fixed-m
+          result; Iraqi Tertiary is partial because source cumulatives and
+          missing assumptions prevent exact reproduction; SABA lacks complete
+          PVT/history and includes unsupported transient/multi-tank physics. No
+          unpublished dates or pressure history are fabricated.
+        </p>
         <p>
           West Ridge oil: N = 85 MMSTB, m = 0.18, pi = 4,200 psia, T = 190 °F,
           Pb = 2,800 psia, Rsi = 650 scf/STB. Prescribed survey pressures pᵢ =

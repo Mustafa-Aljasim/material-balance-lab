@@ -1,3 +1,4 @@
+import { historyLabel } from "./engineering/observation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Building2,
@@ -35,6 +36,9 @@ import { Drive } from "./pages/Drive";
 import { Methodology } from "./pages/Methodology";
 import { Chart, colors } from "./charts/Chart";
 import { fromField, unit } from "./engineering/units";
+import { CaseStudies } from "./pages/CaseStudies";
+import { GasCapAnalysis } from "./components/GasCapAnalysis";
+import { AutoMatch } from "./components/AutoMatch";
 function load() {
   try {
     const raw = localStorage.getItem(PROJECT_KEY);
@@ -57,6 +61,28 @@ export default function App() {
     );
   const [dirty, setDirty] = useState(false),
     openRef = useRef<HTMLInputElement>(null);
+  const [originalCase, setOriginalCase] = useState<{
+    scenario: Scenario;
+    dirty: boolean;
+  } | null>(null);
+  const openLearningCase = (next: Scenario) => {
+    if (!originalCase) {
+      try {
+        const raw = JSON.stringify(s);
+        parseProject(raw);
+        localStorage.setItem(PROJECT_KEY, raw);
+      } catch {
+        /* Retain the previous valid save if the active edits are invalid. */
+      }
+      setOriginalCase({ scenario: s, dirty });
+    }
+    setScenario(next);
+    setDirty(false);
+    inspect(null);
+    setMessage(
+      "Temporary reference scenario. Automatic saving is suspended; your saved reservoir model is protected.",
+    );
+  };
   const cases = useRef<Partial<Record<Model, Scenario>>>({ [s.model]: s });
   const change = (next: Scenario) => {
     setScenario(next);
@@ -69,6 +95,10 @@ export default function App() {
     };
   const closeInspector = useCallback(() => inspect(null), []);
   useEffect(() => {
+    if (originalCase) {
+      setStorage("Temporary case · saved model protected");
+      return;
+    }
     if (!dirty) return;
     setStorage("Saving locally…");
     const persist = () => {
@@ -92,7 +122,7 @@ export default function App() {
       window.removeEventListener("pagehide", persist);
       window.removeEventListener("beforeunload", persist);
     };
-  }, [s, dirty]);
+  }, [s, dirty, originalCase]);
   const calculation = useMemo(() => {
     try {
       return { rows: evaluate(s), error: "" };
@@ -112,6 +142,11 @@ export default function App() {
     }
   const switchModel = (m: Model) => {
     if (m === s.model) return;
+    if (originalCase) {
+      change({ ...demo(m), units: s.units });
+      inspect(null);
+      return;
+    }
     cases.current[s.model] = s;
     change({ ...(cases.current[m] ?? demo(m)), units: s.units });
     inspect(null);
@@ -302,6 +337,36 @@ export default function App() {
             ))}
           </nav>
           <div className="page-content">
+            {originalCase && (
+              <div className="notice temporary-banner">
+                <div>
+                  <strong>Temporary learning scenario</strong>
+                  <p>
+                    Automatic saving is suspended. Your original model is
+                    retained; Save downloads this case as a separate JSON file.
+                  </p>
+                </div>
+                <button
+                  onClick={() => {
+                    setScenario(originalCase.scenario);
+                    setDirty(originalCase.dirty);
+                    setOriginalCase(null);
+                    inspect(null);
+                    setMessage("Original reservoir model restored.");
+                  }}
+                >
+                  Return to my saved model
+                </button>
+              </div>
+            )}
+            {!!s.assumptions?.length && (
+              <details className="notice soft">
+                <summary>Source context & declared assumptions</summary>
+                {s.assumptions.map((a) => (
+                  <p key={a}>{a}</p>
+                ))}
+              </details>
+            )}
             {message && (
               <div className="notice message" role="status">
                 {message}
@@ -326,7 +391,7 @@ export default function App() {
                 </summary>
                 {warnings.map((r) => (
                   <p key={r.row.id}>
-                    {r.row.date}: {r.error}
+                    {historyLabel(r.row)}: {r.error}
                   </p>
                 ))}
               </details>
@@ -396,7 +461,10 @@ export default function App() {
                   </div>
                 )}
                 {!calculation.error && (
-                  <DiagnosticCharts s={s} rows={rows} inspect={inspect} />
+                  <>
+                    <DiagnosticCharts s={s} rows={rows} inspect={inspect} />
+                    <GasCapAnalysis s={s} rows={rows} inspect={inspect} />
+                  </>
                 )}
                 <section className="card">
                   <h3>Pressure surveys used in diagnostics</h3>
@@ -435,7 +503,7 @@ export default function App() {
               <>
                 <div className="page-title">
                   <div>
-                    <h2>Manual pressure history match</h2>
+                    <h2>Pressure history match</h2>
                     <p>
                       Adjust inventory, gas cap and aquifer storage using the
                       parameter panel.
@@ -443,6 +511,7 @@ export default function App() {
                   </div>
                   <span className="pill">{met.count} active surveys</span>
                 </div>
+                <AutoMatch key={s.model + s.name} s={s} change={change} />
                 <div className="metric-line">
                   RMSE{" "}
                   <strong>
@@ -484,7 +553,9 @@ export default function App() {
                       type: "scatter",
                       mode: "lines+markers",
                       name: "Calculated − measured",
-                      x: rows.filter((r) => r.row.use).map((r) => r.row.date),
+                      x: rows
+                        .filter((r) => r.row.use)
+                        .map((r) => historyLabel(r.row)),
                       y: rows
                         .filter((r) => r.row.use)
                         .map((r) =>
@@ -509,7 +580,7 @@ export default function App() {
                       <thead>
                         <tr>
                           <th>Use</th>
-                          <th>Date</th>
+                          <th>Survey / observation</th>
                           <th>Measured ({unit("pressure", s.units)})</th>
                           <th>Calculated ({unit("pressure", s.units)})</th>
                           <th>Residual ({unit("pressure", s.units)})</th>
@@ -521,7 +592,7 @@ export default function App() {
                           <tr key={r.row.id}>
                             <td>
                               <input
-                                aria-label={`Match survey ${r.row.date}`}
+                                aria-label={`Match survey ${historyLabel(r.row)}`}
                                 type="checkbox"
                                 checked={r.row.use}
                                 onChange={(e) =>
@@ -536,7 +607,7 @@ export default function App() {
                                 }
                               />
                             </td>
-                            <td>{r.row.date}</td>
+                            <td>{historyLabel(r.row)}</td>
                             <td>
                               {fmt(
                                 r.row.pressure === null
@@ -592,6 +663,9 @@ export default function App() {
             )}
             {tab === "Methodology & Equations" && (
               <Methodology model={s.model} />
+            )}
+            {tab === "Engineering QC & Case Studies" && (
+              <CaseStudies openCase={openLearningCase} />
             )}
           </div>
           <footer>

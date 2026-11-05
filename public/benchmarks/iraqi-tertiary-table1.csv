@@ -1,0 +1,16 @@
+Property,Value,Unit
+Pi,3319,psi
+Rsi,1051,SCF/STB
+Porosity,14.3,percent
+Viscosity,0.56,cp
+Thickness,170,m
+Permeability,5-10,md
+Bgi,0.000866,BBL/SCF
+GOC,-1925,m/MSL
+Gas_specific_gravity,0.768,air=1
+WOC,-2050,m/MSL
+Oil_gravity,36,API
+Net_to_gross,68.7,percent
+Boi,1.56,BBL/STB
+Salinity,140000,ppm
+Temperature,170,F

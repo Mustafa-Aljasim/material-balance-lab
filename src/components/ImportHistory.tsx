@@ -1,3 +1,4 @@
+import { ReferenceImport } from "./ReferenceImport";
 import { useState } from "react";
 import { Upload } from "lucide-react";
 import type { Scenario } from "../types";
@@ -18,6 +19,7 @@ export function ImportHistory({
   change: (s: Scenario) => void;
   close: () => void;
 }) {
+  const [reference, setReference] = useState(false);
   const [raw, setRaw] = useState(""),
     [table, setTable] = useState<RawTable | null>(null),
     [error, setError] = useState("");
@@ -70,6 +72,29 @@ export function ImportHistory({
       setError((e as Error).message);
     }
   };
+  if (reference)
+    return (
+      <div className="modal-backdrop">
+        <section
+          className="modal import-modal"
+          role="dialog"
+          aria-modal="true"
+          aria-label="Reference Exercise import"
+        >
+          <button
+            className="close-modal"
+            aria-label="Close reference import"
+            onClick={close}
+          >
+            ×
+          </button>
+          <button onClick={() => setReference(false)}>
+            Rates / cumulative import
+          </button>
+          <ReferenceImport s={s} change={change} close={close} />
+        </section>
+      </div>
+    );
   return (
     <div className="modal-backdrop" onClick={close}>
       <section
@@ -92,6 +117,9 @@ export function ImportHistory({
           Upload CSV or paste cells copied from Excel. Data stays in your
           browser.
         </p>
+        <button onClick={() => setReference(true)}>
+          Reference Exercise · pressure-indexed data / Rp / PVT
+        </button>
         {error && (
           <p role="alert" className="notice error">
             {error}

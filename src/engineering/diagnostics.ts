@@ -1,5 +1,5 @@
 import type { Scenario, SolvedRow } from "../types";
-import { makePVT } from "./pvt";
+import { makePVT, required } from "./pvt";
 import { balanceAt, solvePressure } from "./pressureSolver";
 import { historyIssues } from "./history";
 export function evaluate(s: Scenario): SolvedRow[] {
@@ -41,7 +41,9 @@ export function evaluate(s: Scenario): SolvedRow[] {
         errors.push(`Survey: ${(e as Error).message}`);
       }
     try {
-      predicted = solvePressure(s, row, pvt).root;
+      const result = solvePressure(s, row, pvt);
+      predicted = result.root;
+      if (result.warnings) errors.push(...result.warnings);
       predictedBalance = balanceAt(s, row, predicted, pvt);
     } catch (e) {
       errors.push(`Prediction: ${(e as Error).message}`);
@@ -113,9 +115,11 @@ export function pzValidity(s: Scenario, rows: SolvedRow[]): string[] {
       (r) =>
         r.measured &&
         Math.abs(
-          r.measured.pvt.bg /
-            initial.bg /
-            (r.measured.pvt.z / r.measured.p / (initial.z / s.params.pi)) -
+          required(r.measured.pvt.bg, "Bg") /
+            required(initial.bg, "initial Bg") /
+            (required(r.measured.pvt.z, "Z") /
+              r.measured.p /
+              (required(initial.z, "initial Z") / s.params.pi)) -
             1,
         ) > 0.005,
     )

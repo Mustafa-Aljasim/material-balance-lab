@@ -11,6 +11,7 @@ export const TABS = [
   "History Match",
   "Drive Mechanisms",
   "Methodology & Equations",
+  "Engineering QC & Case Studies",
 ];
 export function download(
   content: string,
@@ -109,8 +110,9 @@ export function parseProject(text: string): Scenario {
       !v.pvt.table.every(
         (r) =>
           object(r) &&
-          ["pressure", "bo", "rs", "bg", "bw", "z"].every(
-            (k) => typeof r[k] === "number",
+          ["pressure", "bo", "bw"].every((k) => typeof r[k] === "number") &&
+          ["rs", "bg", "z"].every(
+            (k) => typeof r[k] === "number" || r[k] === null,
           ),
       )
     )
@@ -119,6 +121,28 @@ export function parseProject(text: string): Scenario {
   } else if (v.pvt.mode === "table")
     throw new Error("Table PVT mode has no data.");
   if (
+    v.pvt.oilMode !== undefined &&
+    !["black-oil", "undersaturated"].includes(String(v.pvt.oilMode))
+  )
+    throw new Error("Invalid oil PVT formulation.");
+  if (
+    (v.pvt.source !== undefined && typeof v.pvt.source !== "string") ||
+    (v.pvt.constantBw !== undefined &&
+      (typeof v.pvt.constantBw !== "number" ||
+        !Number.isFinite(v.pvt.constantBw) ||
+        v.pvt.constantBw <= 0)) ||
+    (v.pvt.suppliedColumns !== undefined &&
+      (!Array.isArray(v.pvt.suppliedColumns) ||
+        !v.pvt.suppliedColumns.every((x) => typeof x === "string")))
+  )
+    throw new Error("Invalid PVT source metadata or constant Bw.");
+  if (
+    v.assumptions !== undefined &&
+    (!Array.isArray(v.assumptions) ||
+      !v.assumptions.every((x) => typeof x === "string"))
+  )
+    throw new Error("Invalid assumptions.");
+  if (
     !Array.isArray(v.history) ||
     v.history.length > 2000 ||
     !v.history.every(
@@ -126,6 +150,7 @@ export function parseProject(text: string): Scenario {
         object(r) &&
         typeof r.id === "string" &&
         typeof r.date === "string" &&
+        (r.observation === undefined || typeof r.observation === "string") &&
         ["np", "gp", "wp", "wi", "gi"].every((k) => typeof r[k] === "number") &&
         (r.pressure === null || typeof r.pressure === "number") &&
         typeof r.use === "boolean",
@@ -146,6 +171,7 @@ export function parseProject(text: string): Scenario {
 export function historyExport(s: Scenario) {
   return s.history.map((r) => ({
     Date: r.date,
+    ...(r.observation ? { Observation: r.observation } : {}),
     Np: fromField(r.np, "liquid", s.units),
     Gp: fromField(r.gp, "gas", s.units),
     Wp: fromField(r.wp, "liquid", s.units),
@@ -166,6 +192,7 @@ export function resultsCSV(s: Scenario, rows: SolvedRow[]): string {
       const b = r.measured;
       return {
         Date: r.row.date,
+        Observation: r.row.observation,
         Use: r.row.use,
         Np_STB: r.row.np,
         Gp_scf: r.row.gp,

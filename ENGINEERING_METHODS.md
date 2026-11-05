@@ -14,7 +14,7 @@ support = N Et + We
 closure = support − F
 ```
 
-F and We are rb. Eo/Eg/Efw/Et are rb/STB. Bo/Bw are rb/STB; Bg is rb/scf. m is initial gas-cap reservoir volume / initial oil reservoir volume; it is already included in Eg and Efw, and is not multiplied a second time. Rsi is **selected-source Rs at pi**, including when a table is used. The expanded withdrawal avoids division by Np at zero oil production. Rp = Gp/Np is reported only when defined. Bg,inj defaults to the current reservoir Bg or an explicitly entered positive FVF; Bw,inj is separately entered. Turning injection off sets both injection contributions to zero without altering cumulative data.
+F and We are rb. Eo/Eg/Efw/Et are rb/STB. Bo/Bw are rb/STB; Bg is rb/scf. m is initial gas-cap reservoir volume / initial oil reservoir volume; it is already included in Eg and Efw, and is not multiplied a second time. Rsi is **selected-source Rs at pi**, including when a table is used. The expanded withdrawal avoids division by Np at zero oil production. Rp = Gp/Np is reported only when defined in the full black-oil formulation. Above-Pb Bo-only tables use F = Np Bo + Wp Bw − Wi Bwi and Eo = Bo − Boi, with m=0, no gas injection/free-gas withdrawal and constant associated Rs cancelling algebraically. Rs/Bg/Z and cumulative associated gas remain unknown, not inferred zero; the internal unused Gp sentinel is zero and Rp is not reported. Predictions below Pb are blocked. Bg,inj defaults to the current reservoir Bg or an explicitly entered positive FVF; Bw,inj is separately entered. Turning injection off sets both injection contributions to zero without altering cumulative data.
 
 This is the classical constant-composition, equilibrium black-oil tank formulation (Havlena–Odeh). It excludes changing gas composition, volatile oil, relative-permeability production prediction and spatial pressure gradients. Compressibility terms are first-order approximations in pressure depletion.
 
@@ -107,7 +107,9 @@ This is continuous at Pb. Nonpositive A is rejected. Conservative implementation
 
 ### 3.4 User PVT table
 
-Six required numeric columns: Pressure, Bo, Rs, Bg, Bw, Z. Values are sorted by pressure; duplicate pressures, missing cells, nonfinite values, nonpositive pressure/FVFs/Z and negative Rs are rejected. Each property is piecewise-linearly interpolated versus pressure; exact endpoints are preserved. Extrapolation is disabled by default. Explicit extrapolation uses the nearest two boundary rows and still rejects nonphysical properties. No thermodynamic correction is silently imposed on supplied data. Independent interpolation of Z and Bg can introduce internal inconsistency between coarse points, reported by the p/Z validity rule above.
+Oil black-oil tables require Pressure, Bo, Rs and Bg. Oil Z is optional because it is absent from the oil balance. Above-Pb undersaturated tables require Pressure and Bo, m=0, and the explicit cancellation assumptions above; missing Rs/Bg/Z remain null. Bw is supplied or a positive constant explicitly approved by the user. Dry-gas tables still require Bg and Z. Optional properties must be consistently present or absent across the table.
+
+Values are sorted by pressure; duplicate pressures, missing required cells, nonfinite values, nonpositive pressure/FVFs/Z and negative Rs are rejected. Each supplied property is piecewise-linearly interpolated; null properties remain null. Extrapolation is disabled by default. Explicit extrapolation uses the nearest two boundary rows and still rejects nonphysical properties. No thermodynamic correction is imposed on source data. PVT QC shows Pi/Pb, selected initial properties, source and units, missing values, initial interpolation/extrapolation and suspect Rs/Bg/Bo trends. Warnings identify data to investigate and do not certify thermodynamic consistency.
 
 ## 4. Aquifer
 
@@ -121,18 +123,20 @@ This is signed equilibrium storage, including backflow above pi; it is **not a t
 
 ## 5. Forward pressure solution
 
-At each row `closure(p) = support(p) − F(p)` is solved without reading the row's measured pressure or Use flag. Initial pi is checked first (balance tolerance 10⁻⁸ rb at this endpoint). Otherwise the search proceeds outward from pi toward depletion (negative initial closure) or injection pressure (positive initial closure), scanning 100 equal intervals for the nearest sign change. The bracketed root uses bisection: absolute pressure tolerance 10⁻⁶ psi, 100 iterations maximum; the reported residual is reservoir-volume closure. Solver pressure convergence is independent of the looser educational drive-closure status.
+At each row `closure(p) = support(p) − F(p)` is solved without reading the measured pressure or Use flag. The unchanged bisection method is used inside detected brackets. A 100-interval scan covers both sides of pi, with pi, Pb and all table knots included. Exact zero endpoints are retained, invalid sampled properties break a bracket, and repeated roots are deduplicated. Bisection pressure tolerance is 10⁻¹⁰ psi, at most 100 iterations. A final volume-closure check requires `|R| ≤ max(10⁻⁴ rb, 10⁻⁸ max(|F|, |support|))`. The zero-depletion pi shortcut uses 10⁻⁸ rb.
 
-- Correlation bracket: lower max(14.7 psia, 0.2 Ppc); upper min(max(1.6pi, pi+1000 psi), 30 Ppc).
-- Table bracket without extrapolation: minimum and maximum table pressures.
-- Explicit table extrapolation: default broad pressure bracket, with property-validity checks.
-- Root not bracketed, nonfinite values, unsupported PVT, or iteration exhaustion: missing predicted pressure and an explanatory warning, never a fabricated point.
+- Correlation domain: lower max(14.7 psia, 0.2 Ppc); upper min(max(1.6pi, pi+1000 psi), 30 Ppc).
+- Table without extrapolation: minimum and maximum table pressures; Bo-only lower bound also respects Pb.
+- Explicit extrapolation: broad pressure domain with property-validity checks.
+- No bracket, invalid properties, exhausted iterations or failed volume closure produces a missing prediction and warning.
+- When multiple roots are detected, nearest pi is displayed with an ambiguity warning. Auto Match rejects that candidate. Selection is not proof of the physical branch.
 
-The search assumes the usual tank closure orientation and a physical branch connected to pi. Nonmonotone laboratory tables, physically inconsistent fluid totals or extreme injection can yield multiple roots or no root; finite bracket scanning is not a proof of uniqueness. No optimizer or pressure smoothing is used.
+Finite scanning cannot prove uniqueness: tangent roots and tightly spaced roots within one interval may be missed. Piecewise-linear PVT also introduces derivative discontinuities. Nonmonotone source tables, inconsistent fluid totals and extreme injection require engineering review. Predictions are independent solves per cumulative row, not a transient time-stepping flow solution.
 
 ## 6. Diagnostics and survey selection
 
 - Havlena–Odeh: x = Et; y = F or F−We. Model reference = N Et. Fitted slope is least squares through the origin, `Σxy/Σx²`, active surveys only, omitting |Et| ≤ 10⁻¹⁰ rb/STB. A valid N interpretation requires correct expansion/PVT and negligible or explicitly removed influx.
+- Gas-cap two-parameter fit: define unweighted `Eg0 = Boi(Bg/Bgi−1)` and `K = Boi(cf+Swi cw)(pi−p)/(1−Swi)`. Then `F−We = N(Eo+K) + Nm(Eg0+K)`. Plot `Y=(F−We)/(Eo+K)` versus `X=(Eg0+K)/(Eo+K)`; intercept N, slope Nm. In the zero-compressibility exercise this reduces to F/Eo versus Eg0/Eo. Do not put the already m-weighted stored Eg on this X-axis. Unweighted linear least squares, active nonzero-denominator observations, coefficient correlation and leave-one-out ranges are shown. Assumed fixed We must be justified.
 - Campbell: x = F; y = F/Et or (F−We)/Et, with entered N reference. Plateau, rise and scatter are conditional consistency clues, not unique drive proofs.
 - Gas p/Z: x = Gp; y = measured p/Z from selected PVT. Valid volumetric cases show entered-G reference plus an unconstrained intercept/slope regression. Optional extension reaches p/Z = 0. No extrapolated OGIP claim is shown for invalid volumetric assumptions.
 - Cole: x = Gp; y = F/Et or (F−We)/Et; entered G reference. Et includes declared pore effects. |Et| ≤ 10⁻¹² rb/scf points are suppressed.
@@ -141,13 +145,17 @@ The search assumes the usual tank closure orientation and a physical branch conn
 
 ## 7. Drive indices and closure
 
-At measured pressure, signed contributions are NEo, NEg, NEfw and We. Each is divided by signed F. If |F| < 1 rb indices are undefined. Values are not clamped, made positive or renormalized; the sum represents support/F. “Closes” means `|support−F| ≤ max(1 rb, 0.001|F|)` for the educational display. Zero depletion has zero volumes and undefined indices. Drive analysis includes every measured survey (excluded rows are labelled); Use affects match/regression only.
+At the explicitly selected measured or calculated pressure, signed contributions are NEo, NEg, NEfw and We. Each is divided by signed F. If |F| < 1 rb indices are undefined. Values are not clamped, made positive or renormalized; the sum represents support/F. “Closes” means `|support−F| ≤ max(1 rb, 0.001|F|)` for the educational display. Zero depletion has zero volumes and undefined indices. Drive analysis includes every measured survey (excluded rows are labelled); Use affects match/regression only.
 
 ## 8. Time integration, data QC and units
 
-Dates are validated as real ISO dates (or normalized from M/D/YYYY); elapsed days use UTC dates. Interval-ending convention uses `ΔC_i = q_i(t_i−t_{i−1})` over `(t_{i−1},t_i]`; optional trapezoidal integration uses `(q_i+q_{i−1})/2 × Δt`. The first sample establishes t0 with zero volumes. Prehistory must be supplied as cumulatives. Cumulative inputs are retained exactly, never averaged. Duplicates, unsorted/invalid dates, decreasing/nonfinite/negative cumulatives, nonpositive survey pressures and pressures > 3pi are flagged. Missing pressure is allowed; missing mapped volume is rejected. Maximum 2,000 rows / 5 MB.
+Reference Exercise imports accept pressure-indexed observations with empty dates and distinct observation labels; no dates are fabricated and rate/time integration is unavailable for these records. Cumulative Rp means Gp/Np, never instantaneous well-test GOR, and Gp = Np × Rp after per-column unit conversion. Printed decreasing derived Gp is preserved and flagged; forward simulation and fitting pause until resolved. Optional combined PVT follows the same approval rules as dedicated PVT import.
+
+Dated histories are validated as real ISO dates (or normalized from M/D/YYYY); elapsed days use UTC dates. Interval-ending convention uses `ΔC_i = q_i(t_i−t_{i−1})` over `(t_{i−1},t_i]`; optional trapezoidal integration uses `(q_i+q_{i−1})/2 × Δt`. The first sample establishes t0 with zero volumes. Prehistory must be supplied as cumulatives. Cumulative inputs are retained exactly, never averaged. Duplicates, unsorted/invalid dates, decreasing/nonfinite/negative cumulatives, nonpositive survey pressures and pressures > 3pi are flagged. Missing pressure is allowed; missing mapped volume is rejected. Maximum 2,000 rows / 5 MB.
 
 ```text
+1 MSTB = 10³ STB; 1 MMSTB = 10⁶ STB
+1 Mscf = 10³ scf; 1 MMscf = 10⁶ scf
 1 STB = 0.158987294928 sm³
 1 scf = 0.028316846592 sm³
 1 psi = 0.006894757293168 MPa
@@ -177,7 +185,7 @@ Np = 2e6 STB, Gp = 2e9 scf, Wp = 1e6 STB => F = 6e6 rb
 closure = +1,464,800 rb (deliberately inconsistent; indices do not sum to 100%)
 ```
 
-There are also exact ideal-gas pressure tests, pot-supported oil/gas tests, injection-above-pi tests and a DAK chart check (Ppr=Tpr=1.5 gives Z≈0.8593). Tests establish numerical behavior for these conditions; no independent real-field dataset is represented as validated.
+There are also exact ideal-gas pressure tests, pot-supported oil/gas tests, injection-above-pi tests and a DAK chart check (Ppr=Tpr=1.5 gives Z≈0.8593). Tests establish numerical behavior for these conditions; published-source arithmetic checks and their separate reconstruction limits are recorded in BENCHMARK_VALIDATION.md. These do not certify reserves or a complete field model.
 
 ## 10. References and provenance
 
@@ -190,3 +198,15 @@ There are also exact ideal-gas pressure tests, pot-supported oil/gas tests, inje
 7. DAK coefficient/equation technical note hosted by INGEMMET: https://app.ingemmet.gob.pe/biblioteca/pdf/CLG12-73.pdf
 
 The user-specified ResvEngine material-balance workflow was publicly reviewed for input organization, tank/diagnostic interactions, survey use and export ideas. The supplied Black-Oil-PVT-Generator `/pvt/` page was attempted but could not be retrieved by the web reader in this environment; no source was copied. Correlations were independently implemented from documented equations. All visual design and tank artwork are original vector/CSS elements; no third-party branding or proprietary simulator code/assets are used.
+
+## 11. Bounded Auto Match
+
+Oil supports N, N+m or N+Pot Caq. The objective is unweighted pressure RMSE over all active measured surveys. Every objective evaluation runs the same selected-source forward solver; any failed/ambiguous root rejects the entire candidate rather than dropping a survey. PVT, compressibilities, history, injection and all unselected parameters remain fixed. Dry gas stays manual. Bo-only data cannot fit m; Caq fitting requires Pot.
+
+Bounds are finite and explicit (N>0; m,Caq≥0), normalized to [0,1]. N alone uses golden-section search with endpoint/current-value comparison. Two parameters use a deterministic 5×5 seed grid plus bounded Nelder–Mead (reflection 1, expansion 2, contraction/shrink 0.5), at most 180 iterations. Convergence is based on normalized parameter spread <10⁻⁶ and objective spread <10⁻⁵ psi (one-parameter interval <10⁻⁷). Bounds and seed grid limit the search; it is not a global-optimum guarantee. A finite valid starting model is required for the before comparison.
+
+The candidate is reviewed before Apply: before/after parameters, RMSE/MAE, measured/calculated overlay, signed residuals, evaluations/convergence and warnings. Sensitivity uses finite differences (1% parameter magnitude or 0.1% bound width, whichever larger, clipped to bounds; one-sided differences at valid PVT boundaries, with up to eight step halvings if both sides initially fail). For two parameters, `−(Ja·Jb)/sqrt((Ja·Ja)(Jb·Jb))` approximates local coefficient correlation under equal independent pressure errors. |correlation|>0.98 or negligible sensitivity warns of weak identification. This is a local diagnostic, not a confidence interval. Boundary fits, rejected trials, nonconvergence or worse fit are disclosed. A small pressure error never proves unique N, m or aquifer strength.
+
+## 12. Learning-case isolation
+
+Engineering QC & Case Studies provides source-linked raw fixtures and rowwise audits. PASS applies only to the stated numerical checks. REFERENCE_DISCREPANCY, PARTIAL_VALIDATION, INSUFFICIENT_SOURCE_DATA and UNSUPPORTED_MODEL are distinct outcomes. Editing a fixture creates a labelled temporary copy. Opening one suspends automatic persistence of that scenario; the saved reservoir remains protected. Return restores the original model, and reload restores it from storage. Saving the temporary case downloads JSON for an explicit separate record.

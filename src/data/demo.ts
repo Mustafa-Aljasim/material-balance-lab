@@ -58,10 +58,10 @@ export function demo(model: Model = "oil"): Scenario {
         waterRatio = 0.12;
       row.np =
         b.support /
-        (b.pvt.bo + (gor - b.pvt.rs) * b.pvt.bg + waterRatio * b.pvt.bw);
+        (b.pvt.bo + (gor - b.pvt.rs!) * b.pvt.bg! + waterRatio * b.pvt.bw);
       row.gp = row.np * gor;
       row.wp = row.np * waterRatio;
-    } else row.gp = b.support / b.pvt.bg;
+    } else row.gp = b.support / b.pvt.bg!;
     s.history.push(row);
   }
   return s;

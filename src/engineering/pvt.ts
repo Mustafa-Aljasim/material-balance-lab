@@ -116,19 +116,30 @@ export function validateTable(table: PVT[]): PVT[] {
   const rows = [...table].sort((a, b) => a.pressure - b.pressure);
   rows.forEach((r, i) => {
     if (
-      Object.values(r).some((x) => !Number.isFinite(x)) ||
+      ["pressure", "bo", "bw"].some(
+        (k) => !Number.isFinite(r[k as keyof PVT]),
+      ) ||
+      ["rs", "bg", "z"].some(
+        (k) =>
+          r[k as keyof PVT] !== null && !Number.isFinite(r[k as keyof PVT]),
+      ) ||
       r.pressure <= 0 ||
       r.bo <= 0 ||
-      r.bg <= 0 ||
+      (r.bg !== null && r.bg <= 0) ||
       r.bw <= 0 ||
-      r.z <= 0 ||
-      r.rs < 0
+      (r.z !== null && r.z <= 0) ||
+      (r.rs !== null && r.rs < 0)
     )
       throw new Error(
         "PVT values must be finite; pressure, FVFs and Z positive; Rs nonnegative.",
       );
     if (i && r.pressure === rows[i - 1].pressure)
       throw new Error("Duplicate PVT pressures are not permitted.");
+    for (const key of ["rs", "bg", "z"] as const)
+      if ((r[key] === null) !== (rows[0][key] === null))
+        throw new Error(
+          `PVT ${key} must be supplied throughout the table or explicitly absent throughout.`,
+        );
   });
   return rows;
 }
@@ -156,21 +167,24 @@ export function interpolatePVT(
   const a = rows[i],
     b = rows[i + 1],
     t = (p - a.pressure) / (b.pressure - a.pressure);
-  const value = (key: keyof PVT) => a[key] + t * (b[key] - a[key]);
+  const value = (key: "rs" | "bg" | "z") =>
+    a[key] === null || b[key] === null
+      ? null
+      : a[key]! + t * (b[key]! - a[key]!);
   const result = {
     pressure: p,
-    bo: value("bo"),
+    bo: a.bo + t * (b.bo - a.bo),
     rs: value("rs"),
     bg: value("bg"),
-    bw: value("bw"),
+    bw: a.bw + t * (b.bw - a.bw),
     z: value("z"),
   };
   if (
     result.bo <= 0 ||
-    result.bg <= 0 ||
+    (result.bg !== null && result.bg <= 0) ||
     result.bw <= 0 ||
-    result.z <= 0 ||
-    result.rs < 0
+    (result.z !== null && result.z <= 0) ||
+    (result.rs !== null && result.rs < 0)
   )
     throw new Error(
       "PVT interpolation/extrapolation produced nonphysical properties.",
@@ -184,7 +198,25 @@ export function makePVT(
 ): PVTProvider {
   if (config.mode === "table") {
     const table = validateTable(config.table);
-    return (p) => interpolatePVT(p, table, config.extrapolate);
+    if (model === "gas" && table.some((r) => r.bg === null || r.z === null))
+      throw new Error("Dry-gas PVT requires Bg and Z throughout the table.");
+    if (
+      model === "oil" &&
+      config.oilMode !== "undersaturated" &&
+      table.some((r) => r.rs === null || r.bg === null)
+    )
+      throw new Error("Black-oil PVT requires Bo, Rs and Bg; Z is optional.");
+    return (p) => {
+      if (
+        model === "oil" &&
+        config.oilMode === "undersaturated" &&
+        (p < a.pb || a.m !== 0)
+      )
+        throw new Error(
+          "Bo-only oil PVT requires p ≥ Pb and no initial gas cap. Supply Rs and Bg for other conditions.",
+        );
+      return interpolatePVT(p, table, config.extrapolate);
+    };
   }
   const cache = new Map<number, PVT>();
   return (p) => {
@@ -194,4 +226,9 @@ export function makePVT(
     cache.set(p, v);
     return v;
   };
+}
+export function required(value: number | null, property: string): number {
+  if (value === null || !Number.isFinite(value))
+    throw new Error(`Required PVT property ${property} is unavailable.`);
+  return value;
 }

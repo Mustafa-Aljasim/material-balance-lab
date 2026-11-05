@@ -1,13 +1,16 @@
+import { historyLabel } from "../engineering/observation";
 import { useEffect, useRef, useState } from "react";
 import { X } from "lucide-react";
 import type { PVT, Scenario, SolvedRow } from "../types";
 import { makePVT } from "../engineering/pvt";
 import { MathBlock } from "./Math";
 import { Methodology } from "../pages/Methodology";
-const n = (x: number) =>
-  Math.abs(x) < 1e-8 && x !== 0
-    ? x.toExponential(8)
-    : Number(x.toPrecision(12)).toString();
+const n = (x: number | null) =>
+  x === null
+    ? "not supplied"
+    : Math.abs(x) < 1e-8 && x !== 0
+      ? x.toExponential(8)
+      : Number(x.toPrecision(12)).toString();
 export function Inspector({
   s,
   selected,
@@ -19,9 +22,13 @@ export function Inspector({
   rows: SolvedRow[];
   close: () => void;
 }) {
-  const [source, setSource] = useState<"measured" | "predicted">("measured"),
+  const [source, setSource] = useState<"measured" | "predicted">(
+      selected.startsWith("predicted:") ? "predicted" : "measured",
+    ),
     ref = useRef<HTMLElement>(null);
-  const row = rows.find((r) => r.row.id === selected);
+  const row = rows.find(
+    (r) => r.row.id === selected.replace(/^predicted:/, ""),
+  );
   const b =
     source === "predicted" || !row?.measured
       ? row?.predictedBalance
@@ -92,7 +99,7 @@ export function Inspector({
         <h2 id="inspector-title">Equation Inspector</h2>
         <p className="modal-intro">
           {row
-            ? `${row.row.date} · ${row.row.use ? "Active survey" : "Excluded survey"}`
+            ? `${historyLabel(row.row)} · ${row.row.use ? "Active survey" : "Excluded survey"}`
             : selected.startsWith("pvt:")
               ? "Selected PVT sample"
               : "Model reference equation"}{" "}
@@ -132,7 +139,9 @@ export function Inspector({
               ].map(([label, value, u]) => (
                 <div key={String(label)}>
                   <span>{label}</span>
-                  <strong>{n(Number(value))}</strong>
+                  <strong>
+                    {value === null ? "Not supplied" : n(Number(value))}
+                  </strong>
                   <small>{u}</small>
                 </div>
               ))}
@@ -152,52 +161,80 @@ export function Inspector({
           <>
             <h3>Withdrawal & expansion</h3>
             <p className="micro">
-              Np = {n(row.row.np)} STB · Gp = {n(row.row.gp)} scf · Wp ={" "}
-              {n(row.row.wp)} STB · Wi = {n(row.row.wi)} STB · Gi ={" "}
+              Np = {n(row.row.np)} STB · Gp ={" "}
+              {b.simplifiedOil
+                ? "not supplied; associated gas cancels in this formulation"
+                : `${n(row.row.gp)} scf`}{" "}
+              · Wp = {n(row.row.wp)} STB · Wi = {n(row.row.wi)} STB · Gi ={" "}
               {n(row.row.gi)} scf. Rp ={" "}
-              {b.rp === null
-                ? "undefined at Np = 0; expanded F remains valid"
-                : `${n(b.rp)} scf/STB`}
+              {b.simplifiedOil
+                ? "not established from Bo-only inputs"
+                : b.rp === null
+                  ? "undefined at Np = 0; expanded F remains valid"
+                  : `${n(b.rp)} scf/STB`}
               .
             </p>
-            <MathBlock
-              equation={
-                s.model === "oil"
-                  ? "F=N_p B_o+(G_p-N_p R_s)B_g+W_p B_w-W_iB_{w,inj}-G_iB_{g,inj}"
-                  : "F=G_pB_g+W_pB_w-W_iB_{w,inj}-G_iB_{g,inj}"
-              }
-            />
-            <div className="worked">
-              {s.model === "oil"
-                ? `${n(row.row.np)} × ${n(b.pvt.bo)} + (${n(row.row.gp)} − ${n(row.row.np)} × ${n(b.pvt.rs)}) × ${n(b.pvt.bg)}`
-                : `${n(row.row.gp)} × ${n(b.pvt.bg)}`}{" "}
-              + {n(row.row.wp)} × {n(b.pvt.bw)} −{" "}
-              {a.injection
-                ? `${n(row.row.wi)} × ${n(a.bwi)} − ${n(row.row.gi)} × ${n(a.bgi ?? b.pvt.bg)}`
-                : "0 (injection excluded)"}{" "}
-              = <strong>{n(b.F)} rb</strong>
-            </div>
-            {s.model === "oil" ? (
+            {b.simplifiedOil ? (
               <>
-                <MathBlock equation={"E_o=(B_o-B_{oi})+(R_{si}-R_s)B_g"} />
-                <div className="worked">
-                  ({n(b.pvt.bo)} − {n(b.initial.bo)}) + ({n(b.initial.rs)} −{" "}
-                  {n(b.pvt.rs)}) × {n(b.pvt.bg)} ={" "}
-                  <strong>{n(b.Eo)} rb/STB</strong>
+                <div className="notice soft">
+                  Above-Pb Bo-only balance. Constant associated solution gas
+                  cancels; Rs, Bg and Z were not supplied and are not
+                  fabricated.
                 </div>
-                <MathBlock equation={"E_g=m B_{oi}(B_g/B_{gi}-1)"} />
+                <MathBlock equation="F=N_p B_o+W_p B_w-W_i B_{wi}" />
                 <div className="worked">
-                  {n(a.m)} × {n(b.initial.bo)} × ({n(b.pvt.bg)} /{" "}
-                  {n(b.initial.bg)} − 1) = <strong>{n(b.Eg)} rb/STB</strong>
+                  {n(row.row.np)} × {n(b.pvt.bo)} + {n(row.row.wp)} ×{" "}
+                  {n(b.pvt.bw)} − {a.injection ? n(row.row.wi * a.bwi) : "0"} ={" "}
+                  {n(b.F)} rb
+                </div>
+                <MathBlock equation="E_o=B_o-B_{oi}" />
+                <div className="worked">
+                  {n(b.pvt.bo)} − {n(b.initial.bo)} = {n(b.Eo)} rb/STB. Gas-cap
+                  contribution = 0 because m = 0, not an inferred Bg.
                 </div>
               </>
             ) : (
               <>
-                <MathBlock equation={"E_g=B_g-B_{gi}"} />
+                <MathBlock
+                  equation={
+                    s.model === "oil"
+                      ? "F=N_p B_o+(G_p-N_p R_s)B_g+W_p B_w-W_iB_{w,inj}-G_iB_{g,inj}"
+                      : "F=G_pB_g+W_pB_w-W_iB_{w,inj}-G_iB_{g,inj}"
+                  }
+                />
                 <div className="worked">
-                  {n(b.pvt.bg)} − {n(b.initial.bg)} ={" "}
-                  <strong>{n(b.Eg)} rb/scf</strong>
+                  {s.model === "oil"
+                    ? `${n(row.row.np)} × ${n(b.pvt.bo)} + (${n(row.row.gp)} − ${n(row.row.np)} × ${n(b.pvt.rs)}) × ${n(b.pvt.bg)}`
+                    : `${n(row.row.gp)} × ${n(b.pvt.bg)}`}{" "}
+                  + {n(row.row.wp)} × {n(b.pvt.bw)} −{" "}
+                  {a.injection
+                    ? `${n(row.row.wi)} × ${n(a.bwi)} − ${n(row.row.gi)} × ${n(a.bgi ?? b.pvt.bg)}`
+                    : "0 (injection excluded)"}{" "}
+                  = <strong>{n(b.F)} rb</strong>
                 </div>
+                {s.model === "oil" ? (
+                  <>
+                    <MathBlock equation={"E_o=(B_o-B_{oi})+(R_{si}-R_s)B_g"} />
+                    <div className="worked">
+                      ({n(b.pvt.bo)} − {n(b.initial.bo)}) + ({n(b.initial.rs)} −{" "}
+                      {n(b.pvt.rs)}) × {n(b.pvt.bg)} ={" "}
+                      <strong>{n(b.Eo)} rb/STB</strong>
+                    </div>
+                    <MathBlock equation={"E_g=m B_{oi}(B_g/B_{gi}-1)"} />
+                    <div className="worked">
+                      {n(a.m)} × {n(b.initial.bo)} × ({n(b.pvt.bg)} /{" "}
+                      {n(b.initial.bg)} − 1) = <strong>{n(b.Eg)} rb/STB</strong>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <MathBlock equation={"E_g=B_g-B_{gi}"} />
+                    <div className="worked">
+                      {n(b.pvt.bg)} − {n(b.initial.bg)} ={" "}
+                      <strong>{n(b.Eg)} rb/scf</strong>
+                    </div>
+                  </>
+                )}
               </>
             )}
             <MathBlock

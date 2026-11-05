@@ -1,10 +1,12 @@
+import { importPVT } from "../engineering/pvtImport";
+import { pvtQC } from "../engineering/pvtQC";
 import { useState } from "react";
 import { Download, Upload } from "lucide-react";
 import type { PVT, Scenario } from "../types";
-import { makePVT, sutton, validateTable } from "../engineering/pvt";
-import { parseTable, serializeCSV } from "../engineering/history";
+import { makePVT, sutton } from "../engineering/pvt";
+import { serializeCSV } from "../engineering/history";
 import { download } from "../engineering/project";
-import { fromField, toField, unit } from "../engineering/units";
+import { fromField, unit } from "../engineering/units";
 import { Chart, colors } from "../charts/Chart";
 import { fmt } from "./Overview";
 export function PVTPage({
@@ -18,6 +20,14 @@ export function PVTPage({
 }) {
   const [error, setError] = useState(""),
     [fileUnits, setFileUnits] = useState(s.units);
+  const [oilMode, setOilMode] = useState<"black-oil" | "undersaturated">(
+      s.pvt.oilMode ?? "black-oil",
+    ),
+    [approveBw, setApproveBw] = useState(false),
+    [source, setSource] = useState(
+      s.pvt.source ?? "User-supplied laboratory PVT",
+    );
+  const qc = pvtQC(s);
   const rows: PVT[] = [],
     samplingErrors: string[] = [];
   try {
@@ -46,39 +56,20 @@ export function PVTPage({
     samplingErrors.push((e as Error).message);
   }
   const load = (text: string) => {
-    const t = parseTable(text),
-      required = ["Pressure", "Bo", "Rs", "Bg", "Bw", "Z"];
-    const indexes = required.map((key) =>
-      t.headers.findIndex((h) => h.toLowerCase() === key.toLowerCase()),
-    );
-    if (indexes.some((i) => i < 0))
-      throw new Error("PVT CSV requires Pressure, Bo, Rs, Bg, Bw, Z headers.");
-    const table = t.rows.map((r, n): PVT => {
-      const v = indexes.map((i) => {
-        if (!r[i]?.trim() || !Number.isFinite(Number(r[i])))
-          throw new Error(
-            `PVT row ${n + 1} has a missing or invalid property.`,
-          );
-        return Number(r[i]);
-      });
-      return {
-        pressure: toField(v[0], "pressure", fileUnits),
-        bo: v[1],
-        rs: toField(v[2], "rs", fileUnits),
-        bg: toField(v[3], "bg", fileUnits),
-        bw: v[4],
-        z: v[5],
-      };
+    const imported = importPVT(text, s.model, fileUnits, {
+      oilMode,
+      constantBw: approveBw ? s.params.bw : null,
+      source,
     });
-    const valid = validateTable(table);
     if (
       !s.pvt.extrapolate &&
-      (s.params.pi < valid[0].pressure || s.params.pi > valid.at(-1)!.pressure)
+      (s.params.pi < imported.table[0].pressure ||
+        s.params.pi > imported.table.at(-1)!.pressure)
     )
       throw new Error(
-        "PVT range must cover initial reservoir pressure. Change pi or explicitly enable extrapolation before upload.",
+        "PVT table must cover pi, including a valid initial-state row. No initial properties are invented.",
       );
-    change({ ...s, pvt: { ...s.pvt, mode: "table", table: valid } });
+    change({ ...s, pvt: { ...imported, extrapolate: s.pvt.extrapolate } });
     setError("");
   };
   const trace = (key: keyof PVT, name: string, color: string) => ({
@@ -147,7 +138,7 @@ export function PVTPage({
           <p className="micro">
             {s.pvt.mode === "correlation"
               ? "Sweet hydrocarbon gas only. Sutton: gas gravity 0.57–1.68. DAK: Tpr 1.05–3, Ppr 0.2–30. No sour-gas or condensate correction."
-              : "All six properties are interpolated linearly in pressure. No silent extrapolation; explicit opt-in below applies to diagnostics and prediction."}
+              : "Supplied properties are interpolated linearly in pressure; absent oil Z/Rs/Bg remain explicitly missing. No silent extrapolation; explicit opt-in below applies to diagnostics and prediction."}
           </p>
           {s.model === "oil" && s.pvt.mode === "correlation" && (
             <p className="micro">
@@ -189,8 +180,90 @@ export function PVTPage({
           </label>
         </div>
       </div>
+      <section className="card pvt-qc">
+        <h3>PVT QC & initial state</h3>
+        <div className="summary-items">
+          <div>
+            <span>Pi / Pb (psia)</span>
+            <strong>
+              {s.params.pi} / {s.params.pb}
+            </strong>
+          </div>
+          <div>
+            <span>Selected Boi / Rsi / Bgi</span>
+            <strong>
+              {fmt(qc.initial?.bo, 6)} rb/STB · {fmt(qc.initial?.rs, 4)} scf/STB
+              · {fmt(qc.initial?.bg, 8)} rb/scf
+            </strong>
+          </div>
+          <div>
+            <span>Original data source</span>
+            <strong>
+              {s.pvt.source ?? "Published correlations / entered calibration"}
+            </strong>
+          </div>
+        </div>
+        {qc.messages.map((m, i) => (
+          <p
+            key={i}
+            className={`notice ${m.level === "error" ? "error" : m.level === "warning" ? "warning" : "soft"}`}
+          >
+            {m.text}
+          </p>
+        ))}
+        <p className="micro">
+          Initial-state values come from the selected PVT source. Missing values
+          are shown as — and never filled with synthetic correlation data. Audit
+          units above are canonical field units.
+        </p>
+      </section>
+      <section className="card pvt-import-options">
+        <h3>PVT import assumptions</h3>
+        {s.model === "oil" && (
+          <label>
+            Oil formulation
+            <select
+              aria-label="Oil PVT formulation"
+              value={oilMode}
+              onChange={(e) => setOilMode(e.target.value as typeof oilMode)}
+            >
+              <option value="black-oil">
+                Black oil · Pressure, Bo, Rs, Bg
+              </option>
+              <option value="undersaturated">
+                Above-Pb oil · Pressure, Bo only
+              </option>
+            </select>
+          </label>
+        )}
+        <label className="check">
+          <input
+            type="checkbox"
+            checked={approveBw}
+            onChange={(e) => setApproveBw(e.target.checked)}
+          />{" "}
+          I approve constant Bw = {s.params.bw} when laboratory Bw is
+          unavailable
+        </label>
+        <label className="field-label">
+          Original source
+          <input
+            aria-label="PVT original source"
+            value={source}
+            onChange={(e) => setSource(e.target.value)}
+          />
+        </label>
+        <p className="micro">
+          Oil Z is optional. Bo-only mode requires m=0, p≥Pb and no free-gas
+          withdrawal/injection; constant associated solution gas cancels. Upload
+          after choosing these assumptions. Dry-gas Bg and Z remain required.
+        </p>
+      </section>
       <div className="notice soft">
-        <strong>PVT table format:</strong> Pressure, Bo, Rs, Bg, Bw, Z.{" "}
+        <strong>PVT table format:</strong> Columns depend on the selected
+        formulation. Bo/Rs/Bg are required for black oil; Bo alone for the
+        constrained above-Pb exercise; oil Z is optional. Bw is supplied or
+        explicitly approved as a constant.{" "}
         {fileUnits === "FIELD"
           ? "psia, rb/STB, scf/STB, rb/scf, rb/STB, dimensionless."
           : "MPa(a), rm³/sm³, sm³/sm³, rm³/sm³, rm³/sm³, dimensionless."}{" "}
@@ -246,29 +319,50 @@ export function PVTPage({
               yTitle={`Bo (${s.units === "FIELD" ? "rb/STB" : "rm³/sm³"})`}
               onPoint={inspect}
             />
-            <Chart
-              title="Solution gas–oil ratio"
-              data={[trace("rs", "Rs", colors.orange)]}
-              xTitle={`Pressure (${unit("pressure", s.units)})`}
-              yTitle={`Rs (${unit("rs", s.units)})`}
-              onPoint={inspect}
-            />
+            {rows.some((r) => r.rs !== null) ? (
+              <Chart
+                title="Solution gas–oil ratio"
+                data={[trace("rs", "Rs", colors.orange)]}
+                xTitle={`Pressure (${unit("pressure", s.units)})`}
+                yTitle={`Rs (${unit("rs", s.units)})`}
+                onPoint={inspect}
+              />
+            ) : (
+              <section className="card">
+                <h3>Solution gas–oil ratio</h3>
+                <p className="micro">Not supplied; no rs curve inferred.</p>
+              </section>
+            )}
           </>
         )}
-        <Chart
-          title="Gas deviation factor"
-          data={[trace("z", "Z", colors.olive)]}
-          xTitle={`Pressure (${unit("pressure", s.units)})`}
-          yTitle="Z (dimensionless)"
-          onPoint={inspect}
-        />
-        <Chart
-          title="Gas formation volume factor"
-          data={[trace("bg", "Bg", colors.blue)]}
-          xTitle={`Pressure (${unit("pressure", s.units)})`}
-          yTitle={`Bg (${unit("bg", s.units)})`}
-          onPoint={inspect}
-        />
+        {rows.some((r) => r.z !== null) ? (
+          <Chart
+            title="Gas deviation factor"
+            data={[trace("z", "Z", colors.olive)]}
+            xTitle={`Pressure (${unit("pressure", s.units)})`}
+            yTitle="Z (dimensionless)"
+            onPoint={inspect}
+          />
+        ) : (
+          <section className="card">
+            <h3>Gas deviation factor</h3>
+            <p className="micro">Not supplied; no z curve inferred.</p>
+          </section>
+        )}
+        {rows.some((r) => r.bg !== null) ? (
+          <Chart
+            title="Gas formation volume factor"
+            data={[trace("bg", "Bg", colors.blue)]}
+            xTitle={`Pressure (${unit("pressure", s.units)})`}
+            yTitle={`Bg (${unit("bg", s.units)})`}
+            onPoint={inspect}
+          />
+        ) : (
+          <section className="card">
+            <h3>Gas formation volume factor</h3>
+            <p className="micro">Not supplied; no bg curve inferred.</p>
+          </section>
+        )}
         <Chart
           title="Water formation volume factor"
           data={[trace("bw", "Bw", colors.blue)]}

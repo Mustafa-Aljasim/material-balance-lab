@@ -1,3 +1,5 @@
+import { historyLabel } from "../engineering/observation";
+import { useState } from "react";
 import type { Scenario, SolvedRow } from "../types";
 import { Chart, colors } from "../charts/Chart";
 import { fromField, reservoirUnit } from "../engineering/units";
@@ -11,6 +13,7 @@ export function Drive({
   rows: SolvedRow[];
   inspect: (id: string) => void;
 }) {
+  const [basis, setBasis] = useState<"measured" | "predicted">("measured");
   if (s.model === "gas")
     return (
       <section className="card">
@@ -23,23 +26,34 @@ export function Drive({
         </p>
       </section>
     );
-  const points = rows.filter((r) => r.measured),
+  const points = rows
+      .map((r) =>
+        basis === "predicted" ? { ...r, measured: r.predictedBalance } : r,
+      )
+      .filter((r) => r.measured),
     latest = points.at(-1)?.measured;
   return (
     <>
       <div className="page-title">
         <div>
           <h2>Reservoir drive mechanisms</h2>
-          <p>
-            Signed, model-calculated support evaluated at every measured
-            pressure.
-          </p>
+          <p>Signed, model-calculated support evaluated at {basis} pressure.</p>
         </div>
-        <span className="pill">No forced normalization</span>
+        <div>
+          <span className="pill">No forced normalization</span>
+          <select
+            aria-label="Drive index pressure basis"
+            value={basis}
+            onChange={(e) => setBasis(e.target.value as typeof basis)}
+          >
+            <option value="measured">At measured pressure</option>
+            <option value="predicted">At calculated pressure</option>
+          </select>
+        </div>
       </div>
       <Chart
         title="Material balance contributions"
-        subtitle="Signed reservoir-volume contributions · all measured surveys, including excluded surveys"
+        subtitle={`Signed model contributions at ${basis} pressure · excluded surveys remain labelled`}
         data={(["oil", "gas", "rock", "We"] as const).map((k, i) => ({
           type: "bar",
           name: [
@@ -48,16 +62,18 @@ export function Drive({
             "Rock / connate water",
             "Water influx",
           ][i],
-          x: points.map((r) => r.row.date),
+          x: points.map((r) => historyLabel(r.row)),
           y: points.map(
             (r) => fromField(r.measured![k], "liquid", s.units) / 1e6,
           ),
-          customdata: points.map((r) => r.row.id),
+          customdata: points.map((r) =>
+            basis === "predicted" ? `predicted:${r.row.id}` : r.row.id,
+          ),
           marker: {
             color: [colors.green, colors.orange, colors.olive, colors.blue][i],
           },
         }))}
-        xTitle="Survey date"
+        xTitle="Survey / observation"
         yTitle={`Model support (MM ${reservoirUnit(s.units)})`}
         layout={{ barmode: "relative" }}
         height={380}
@@ -98,7 +114,7 @@ export function Drive({
           <table className="data-table">
             <thead>
               <tr>
-                <th>Survey date</th>
+                <th>Survey / observation</th>
                 <th>Oil / gas (%)</th>
                 <th>Gas cap (%)</th>
                 <th>Rock / water (%)</th>
@@ -114,7 +130,7 @@ export function Drive({
                 return (
                   <tr key={r.row.id}>
                     <td>
-                      {r.row.date}
+                      {historyLabel(r.row)}
                       {!r.row.use && <small>Excluded from match</small>}
                     </td>
                     {[0, 1, 2, 3].map((i) => (
@@ -134,7 +150,13 @@ export function Drive({
                     <td>
                       <button
                         className="text-button"
-                        onClick={() => inspect(r.row.id)}
+                        onClick={() =>
+                          inspect(
+                            basis === "predicted"
+                              ? `predicted:${r.row.id}`
+                              : r.row.id,
+                          )
+                        }
                       >
                         Inspect
                       </button>

@@ -91,13 +91,13 @@ describe("gas balance and volumetric interpretation", () => {
       pvt = makePVT(s.pvt, s.params, "gas"),
       rows = evaluate(s);
     const fit = linearFit(
-      s.history.map((r) => [r.gp, r.pressure! / pvt(r.pressure!).z]),
+      s.history.map((r) => [r.gp, r.pressure! / pvt(r.pressure!).z!]),
     );
     expect(fit!.interceptX! / s.params.G).toBeCloseTo(1, 12);
     expect(pzValidity(s, rows)).toEqual([]);
     rows.forEach((r) =>
-      expect(r.measured!.p / r.measured!.pvt.z).toBeCloseTo(
-        (s.params.pi / pvt(s.params.pi).z) * (1 - r.row.gp / s.params.G),
+      expect(r.measured!.p / r.measured!.pvt.z!).toBeCloseTo(
+        (s.params.pi / pvt(s.params.pi).z!) * (1 - r.row.gp / s.params.G),
         9,
       ),
     );
@@ -120,7 +120,7 @@ describe("gas balance and volumetric interpretation", () => {
       extrapolate: false,
       table: [pvt(1400), pvt(4200)],
     };
-    s.pvt.table[0].bg *= 1.2;
+    s.pvt.table[0].bg! *= 1.2;
     expect(pzValidity(s, evaluate(s))).toContain(
       "PVT Bg and Z/p differ by over 0.5%",
     );

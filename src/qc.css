@@ -1,0 +1,318 @@
+.case-studies {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  min-width: 0;
+  gap: 20px;
+}
+.case-studies > * {
+  min-width: 0;
+}
+.case-selector {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+}
+.case-selector button {
+  padding: 13px 12px;
+  min-height: 65px;
+  text-align: left;
+  justify-content: flex-start;
+  font-size: 11px;
+  line-height: 1.6;
+  background: #fafcf5;
+  color: #718263;
+}
+.case-selector button.active {
+  background: #294c3e;
+  border-color: #294c3e;
+  color: #f2f5e9;
+}
+.validation-status {
+  font-size: 9px;
+  letter-spacing: 0.6px;
+  font-weight: 600;
+  background: #eef3e5;
+  border: 1px solid #d5dfc6;
+  color: #64834e;
+  padding: 5px 8px;
+  border-radius: 4px;
+  white-space: nowrap;
+  display: inline-block;
+}
+.validation-status.reference_discrepancy {
+  background: #faf0dc;
+  border-color: #ead7ac;
+  color: #9b7835;
+}
+.validation-status.partial_validation {
+  background: #edf1f6;
+  border-color: #d5dfe8;
+  color: #6d85a0;
+}
+.validation-status.insufficient_source_data,
+.validation-status.unsupported_model {
+  background: #f0f0eb;
+  border-color: #dddcd1;
+  color: #8b8c7a;
+}
+.qc-columns {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 28px;
+  margin-top: 15px;
+}
+.qc-columns li {
+  font-size: 12px;
+  color: #78856b;
+  line-height: 1.8;
+  margin: 7px 0;
+}
+.qc-columns ul {
+  padding-left: 17px;
+}
+.case-studies a {
+  overflow-wrap: anywhere;
+  font-size: 12px;
+  color: #6c8659;
+  text-decoration: none;
+}
+.case-studies a:hover {
+  text-decoration: underline;
+}
+.case-studies .section-heading {
+  gap: 16px;
+  flex-wrap: wrap;
+}
+.case-studies textarea,
+.reference-import textarea {
+  width: 100%;
+  padding: 13px 15px;
+  font:
+    11px/1.8 Consolas,
+    monospace;
+  resize: vertical;
+  background: #fbfcf7;
+  margin: 12px 0;
+  border-color: #dce3d1;
+}
+.case-studies .button-row {
+  margin: 12px 0;
+}
+.case-studies .primary-button {
+  margin-top: 10px;
+}
+.case-studies .data-table th,
+.case-studies .data-table td {
+  font-size: 10px;
+  padding: 11px 12px;
+}
+.case-studies .notice {
+  line-height: 1.8;
+}
+.case-studies .data-table button {
+  font-size: 10px;
+  padding: 4px 8px;
+}
+.auto-match {
+  margin-bottom: 22px;
+}
+.auto-match > label,
+.pvt-import-options > label {
+  font-size: 11px;
+  color: #7a886b;
+  display: block;
+  line-height: 1.8;
+  margin: 10px 0;
+}
+.auto-match > label select,
+.pvt-import-options > label select {
+  margin-left: 12px;
+  font-size: 11px;
+}
+.auto-match .mapping-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  margin: 20px 0;
+}
+.auto-match .mapping-grid > div {
+  border: 1px solid #e4e9db;
+  border-radius: 5px;
+  padding: 13px 15px;
+  background: #fafcf6;
+}
+.auto-match .mapping-grid strong {
+  font-size: 11px;
+  font-weight: 500;
+  color: #627b50;
+  display: block;
+  margin-bottom: 9px;
+}
+.auto-match .field-label input {
+  width: 58%;
+  font-size: 11px;
+}
+.auto-match > .metric-line {
+  margin-top: 18px;
+  flex-wrap: wrap;
+}
+.auto-match > .chart-card {
+  margin: 20px 0;
+}
+.auto-match .data-table {
+  margin: 12px 0;
+}
+.auto-match .micro {
+  line-height: 1.8;
+}
+.auto-match > .notice {
+  margin-top: 14px;
+}
+.gas-cap-analysis {
+  margin: 24px 0;
+}
+.gas-cap-analysis > .card {
+  margin-top: 16px;
+}
+.gas-cap-analysis > .notice {
+  margin-top: 13px;
+}
+.gas-cap-analysis .metric-line {
+  flex-wrap: wrap;
+  gap: 10px;
+}
+.pvt-qc,
+.pvt-import-options {
+  margin: 18px 0;
+}
+.pvt-qc .notice {
+  margin-top: 12px;
+  margin-bottom: 0;
+}
+.pvt-qc .summary-items {
+  margin-bottom: 15px;
+}
+.pvt-qc .summary-items strong {
+  line-height: 1.8;
+}
+.pvt-import-options label.check {
+  display: flex;
+}
+.pvt-import-options .field-label {
+  display: flex;
+  justify-content: flex-start;
+  gap: 15px;
+}
+.pvt-import-options .field-label input {
+  flex: 1;
+  max-width: 600px;
+}
+.temporary-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  background: #edf1df;
+  color: #6e8159;
+  border-color: #d7e1bf;
+}
+.temporary-banner p {
+  font-size: 10px;
+  line-height: 1.8;
+  margin-top: 5px;
+}
+.temporary-banner button {
+  white-space: nowrap;
+  color: #62794c;
+  border-color: #c6d4b0;
+}
+.reference-import {
+  padding: 20px 0;
+  border: 0;
+  background: transparent;
+}
+.reference-import .mapping-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  margin-top: 18px;
+}
+.reference-import .mapping-grid label {
+  background: #f2f5eb;
+  padding: 10px;
+  border: 1px solid #e6ebdb;
+  border-radius: 4px;
+}
+.reference-import .mapping-grid select {
+  font-size: 10px;
+}
+.reference-import .check {
+  flex-wrap: wrap;
+  line-height: 1.8;
+}
+.reference-import > .file-button {
+  width: max-content;
+  margin: 10px 0;
+}
+.reference-import .field-label input {
+  flex: 1;
+  margin-left: 12px;
+}
+@media (max-width: 1100px) {
+  .case-selector {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .qc-columns {
+    grid-template-columns: 1fr;
+  }
+  .auto-match {
+    padding: 18px;
+  }
+  .case-studies .data-table td {
+    white-space: normal;
+    min-width: 100px;
+  }
+  .temporary-banner {
+    flex-wrap: wrap;
+  }
+  .reference-import .mapping-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+@media (max-width: 720px) {
+  .case-selector button {
+    font-size: 10px;
+    padding: 10px;
+    min-height: 70px;
+  }
+  .auto-match .mapping-grid {
+    grid-template-columns: 1fr;
+  }
+  .auto-match .data-table {
+    display: block;
+    overflow: auto;
+  }
+  .auto-match > label select,
+  .pvt-import-options > label select {
+    margin: 8px 0;
+    width: 100%;
+  }
+  .validation-status {
+    font-size: 8px;
+    white-space: normal;
+  }
+  .qc-columns {
+    gap: 12px;
+  }
+  .qc-columns li {
+    font-size: 11px;
+  }
+  .case-studies .section-heading h3 {
+    font-size: 13px;
+  }
+  .case-studies .card {
+    padding: 17px;
+  }
+  .temporary-banner button {
+    font-size: 10px;
+  }
+  .pvt-qc .summary-items {
+    grid-template-columns: 1fr;
+  }
+}

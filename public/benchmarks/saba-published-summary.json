@@ -1,0 +1,10 @@
+{
+  "source": "Bawahab & Hazim (2023), Geosciences and Engineering 11(1), 117–132, Tables 1–4",
+  "url": "https://ojs.uni-miskolc.hu/index.php/geosciences/article/download/2221/1870/10575",
+  "status": "INSUFFICIENT_SOURCE_DATA",
+  "reservoirX": {"initialPressure_bar":330.8,"initialPressure_psi_printed":4801,"temperature_C":140,"connateWater_percent":21.6,"initialOOIP_million_m3":22.199,"aquiferVolume_thousand_m3":460,"waterInflowConstant_m3_per_bar":228.4,"oilFVF_m3_per_Sm3":1.93,"gasSpecificGravity":0.89,"solutionGOR_ft3_per_ft3":259},
+  "smallPotSingleTankResult": {"OOIP_million_m3":23.371,"RMSE_as_reported":2.306568,"RMSE_pressure_unit":null},
+  "multiTankTransmissibility_m3_day_mPa_s_bar": {"XY":6.93416e-9,"YZ":1.38694e-8},
+  "missing": ["complete dated withdrawal/injection and pressure histories","pressure-dependent PVT and initial reference gas states","calibrated aquifer storage / compressibilities","unambiguous RMSE unit basis"],
+  "notes": ["The water-inflow constant is not assumed to equal the lab equilibrium Caq.","Single-tank small-pot and multi-tank analyses are distinct.","No unpublished production or pressure history is reconstructed."]
+}

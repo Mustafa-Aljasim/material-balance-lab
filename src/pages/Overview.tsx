@@ -1,3 +1,4 @@
+import { historyLabel, historyAxisTitle } from "../engineering/observation";
 import {
   Activity,
   ArrowDownRight,
@@ -41,7 +42,7 @@ export function PressureCharts({
   const x = (r: SolvedRow) =>
     cumulative
       ? fromField(s.model === "oil" ? r.row.np : r.row.gp, q, s.units) / scale
-      : r.row.date;
+      : historyLabel(r.row);
   const data: Data[] = [
     {
       type: "scatter",
@@ -53,7 +54,7 @@ export function PressureCharts({
           ? null
           : fromField(r.predicted, "pressure", s.units),
       ),
-      customdata: rows.map((r) => r.row.id),
+      customdata: rows.map((r) => `predicted:${r.row.id}`),
       line: { color: colors.green, width: 2.5 },
       connectgaps: false,
     },
@@ -104,7 +105,7 @@ export function PressureCharts({
       xTitle={
         cumulative
           ? `${s.model === "oil" ? "Np" : "Gp"} (${scale === 1e6 ? "MM" : "B"} ${unit(q, s.units)})`
-          : "Production date"
+          : historyAxisTitle(s.history)
       }
       yTitle={`Pressure (${unit("pressure", s.units)})`}
       onPoint={inspect}
@@ -138,7 +139,7 @@ export function DiagnosticCharts({
     customdata: active.map((r) => r.row.id),
     text: active.map(
       (r) =>
-        `${r.row.date}<br>p = ${fmt(fromField(r.measured!.p, "pressure", s.units))} ${unit("pressure", s.units)}<br>F = ${fmt(vol(r.measured!.F))} ${reservoirUnit(s.units)}<br>Et = ${r.measured!.Et.toPrecision(6)} ${s.model === "oil" ? "rb/STB" : "rb/scf"}<br>We = ${fmt(vol(r.measured!.We))} ${reservoirUnit(s.units)}`,
+        `${historyLabel(r.row)}<br>p = ${fmt(fromField(r.measured!.p, "pressure", s.units))} ${unit("pressure", s.units)}<br>F = ${fmt(vol(r.measured!.F))} ${reservoirUnit(s.units)}<br>Et = ${r.measured!.Et.toPrecision(6)} ${s.model === "oil" ? "rb/STB" : "rb/scf"}<br>We = ${fmt(vol(r.measured!.We))} ${reservoirUnit(s.units)}`,
     ),
     hovertemplate:
       "%{text}<br>x = %{x:.5g}<br>y = %{y:.5g}<extra>%{fullData.name}</extra>",
@@ -240,9 +241,9 @@ export function DiagnosticCharts({
     );
   }
   const initial = b[0]?.initial;
-  const pzi = initial ? s.params.pi / initial.z : 0,
+  const pzi = initial ? s.params.pi / initial.z! : 0,
     fit = linearFit(
-      active.map((r) => [r.row.gp, r.measured!.p / r.measured!.pvt.z]),
+      active.map((r) => [r.row.gp, r.measured!.p / r.measured!.pvt.z!]),
     );
   const endG =
     s.display.extrapolatePz && !why.length
@@ -251,7 +252,7 @@ export function DiagnosticCharts({
   const pzData: Data[] = [
     scatter(
       active.map((r) => gas(r.row.gp) / 1e9),
-      b.map((v) => fromField(v.p / v.pvt.z, "pressure", s.units)),
+      b.map((v) => fromField(v.p / v.pvt.z!, "pressure", s.units)),
       "Selected p/Z surveys",
     ),
   ];

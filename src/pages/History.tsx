@@ -1,3 +1,8 @@
+import {
+  historyLabel,
+  hasDates,
+  historyAxisTitle,
+} from "../engineering/observation";
 import { useState } from "react";
 import { Download, Plus, Trash2, Upload } from "lucide-react";
 import type { HistoryRow, Scenario } from "../types";
@@ -42,7 +47,10 @@ export function History({
     page,
     Math.max(0, Math.ceil(s.history.length / 30) - 1),
   );
-  const sorted = [...s.history].sort((a, b) => a.date.localeCompare(b.date));
+  const dated = hasDates(s.history);
+  const sorted = dated
+    ? [...s.history].sort((a, b) => a.date.localeCompare(b.date))
+    : s.history;
   const rates = sorted.map((r, i) => {
     if (!i) return null;
     const prev = sorted[i - 1],
@@ -145,7 +153,7 @@ export function History({
             <thead>
               <tr>
                 <th>Use</th>
-                <th>Date</th>
+                <th>{dated ? "Date" : "Observation (no dates)"}</th>
                 {cols.map((c) => (
                   <th key={c.key}>
                     {c.label}
@@ -168,24 +176,30 @@ export function History({
                     <td>
                       <input
                         type="checkbox"
-                        aria-label={`Use survey ${r.date}`}
+                        aria-label={`Use survey ${historyLabel(r)}`}
                         checked={r.use}
                         onChange={(e) => setRow(r.id, "use", e.target.checked)}
                       />
                     </td>
                     <td>
                       <input
-                        aria-label={`Date ${r.id}`}
-                        type="date"
-                        value={r.date}
-                        onChange={(e) => setRow(r.id, "date", e.target.value)}
+                        aria-label={`${dated ? "Date" : "Observation"} ${r.id}`}
+                        type={dated ? "date" : "text"}
+                        value={dated ? r.date : (r.observation ?? "")}
+                        onChange={(e) =>
+                          setRow(
+                            r.id,
+                            dated ? "date" : "observation",
+                            e.target.value,
+                          )
+                        }
                       />
                     </td>
                     {cols.map((c) => (
                       <td key={c.key}>
                         <EditableNumber
                           key={`${r.id}-${s.units}-${c.key}`}
-                          label={`${c.label} ${r.date}`}
+                          label={`${c.label} ${historyLabel(r)}`}
                           value={fromField(r[c.key], c.q, s.units) / c.scale}
                           onCommit={(raw) =>
                             setRow(
@@ -202,7 +216,7 @@ export function History({
                     <td>
                       <EditableNumber
                         key={`${r.id}-${s.units}-p`}
-                        label={`Pressure ${r.date}`}
+                        label={`Pressure ${historyLabel(r)}`}
                         value={
                           r.pressure === null
                             ? null
@@ -223,7 +237,7 @@ export function History({
                     <td>
                       <button
                         className="delete-row"
-                        title={`Delete row ${r.date}`}
+                        title={`Delete row ${historyLabel(r)}`}
                         onClick={() =>
                           change({
                             ...s,
@@ -258,7 +272,10 @@ export function History({
                   ...s.history,
                   {
                     id: crypto.randomUUID(),
-                    date,
+                    date: dated ? date : "",
+                    ...(dated
+                      ? {}
+                      : { observation: `Observation ${s.history.length + 1}` }),
                     np: last?.np ?? 0,
                     gp: last?.gp ?? 0,
                     wp: last?.wp ?? 0,
@@ -300,44 +317,54 @@ export function History({
         Rows retain cumulative volumes as entered; blank pressure means no
         survey. Imported rates are integrated using elapsed calendar days.
       </p>
-      <div className="chart-grid">
-        <Chart
-          title="Produced & injected liquids"
-          subtitle="Interval-average rates derived from cumulative differences"
-          data={(["qo", "qw", "qi"] as const).map((k, i) => ({
-            type: "scatter",
-            mode: "lines+markers",
-            name: { qo: "Oil", qw: "Water", qi: "Water injection" }[k],
-            x: sorted.map((r) => r.date),
-            y: rates.map((r) =>
-              r ? fromField(r[k], "liquid", s.units) : null,
-            ),
-            customdata: sorted.map((r) => r.id),
-            line: { color: [colors.green, colors.blue, colors.orange][i] },
-          }))}
-          xTitle="Date (rate applies to preceding interval)"
-          yTitle={`Liquid rate (${unit("liquid", s.units)}/day)`}
-          onPoint={inspect}
-        />
-        <Chart
-          title="Gas production & injection"
-          subtitle="Interval-average gas rates at standard conditions"
-          data={(["qg", "qgi"] as const).map((k, i) => ({
-            type: "scatter",
-            mode: "lines+markers",
-            name: k === "qg" ? "Gas production" : "Gas injection",
-            x: sorted.map((r) => r.date),
-            y: rates.map((r) =>
-              r ? fromField(r[k], "gas", s.units) / 1e6 : null,
-            ),
-            customdata: sorted.map((r) => r.id),
-            line: { color: i ? colors.orange : colors.green },
-          }))}
-          xTitle="Date"
-          yTitle={`Gas rate (MM ${unit("gas", s.units)}/day)`}
-          onPoint={inspect}
-        />
-      </div>
+      {!dated && (
+        <p className="notice soft">
+          These are pressure-indexed observations. Actual dates and elapsed time
+          are unavailable: rate curves and any future transient aquifer
+          calculation are unavailable. Cumulative volumes remain exactly as
+          supplied.
+        </p>
+      )}
+      {dated && (
+        <div className="chart-grid">
+          <Chart
+            title="Produced & injected liquids"
+            subtitle="Interval-average rates derived from cumulative differences"
+            data={(["qo", "qw", "qi"] as const).map((k, i) => ({
+              type: "scatter",
+              mode: "lines+markers",
+              name: { qo: "Oil", qw: "Water", qi: "Water injection" }[k],
+              x: sorted.map(historyLabel),
+              y: rates.map((r) =>
+                r ? fromField(r[k], "liquid", s.units) : null,
+              ),
+              customdata: sorted.map((r) => r.id),
+              line: { color: [colors.green, colors.blue, colors.orange][i] },
+            }))}
+            xTitle="Date (rate applies to preceding interval)"
+            yTitle={`Liquid rate (${unit("liquid", s.units)}/day)`}
+            onPoint={inspect}
+          />
+          <Chart
+            title="Gas production & injection"
+            subtitle="Interval-average gas rates at standard conditions"
+            data={(["qg", "qgi"] as const).map((k, i) => ({
+              type: "scatter",
+              mode: "lines+markers",
+              name: k === "qg" ? "Gas production" : "Gas injection",
+              x: sorted.map(historyLabel),
+              y: rates.map((r) =>
+                r ? fromField(r[k], "gas", s.units) / 1e6 : null,
+              ),
+              customdata: sorted.map((r) => r.id),
+              line: { color: i ? colors.orange : colors.green },
+            }))}
+            xTitle={historyAxisTitle(s.history)}
+            yTitle={`Gas rate (MM ${unit("gas", s.units)}/day)`}
+            onPoint={inspect}
+          />
+        </div>
+      )}
       <div className="chart-grid">
         <Chart
           title="Cumulative history"
@@ -349,7 +376,7 @@ export function History({
             type: "scatter",
             mode: "lines+markers",
             name: k.toUpperCase(),
-            x: s.history.map((r) => r.date),
+            x: s.history.map(historyLabel),
             y: s.history.map(
               (r) =>
                 fromField(r[k], oil ? "liquid" : "gas", s.units) /
@@ -358,7 +385,7 @@ export function History({
             customdata: s.history.map((r) => r.id),
             line: { color: [colors.green, colors.blue, colors.orange][i] },
           }))}
-          xTitle="Date"
+          xTitle={historyAxisTitle(s.history)}
           yTitle={`Cumulative (${oil ? "MM" : "B"} ${unit(oil ? "liquid" : "gas", s.units)})`}
           onPoint={inspect}
         />
@@ -369,7 +396,7 @@ export function History({
               type: "scatter",
               mode: "markers",
               name: "Pressure surveys",
-              x: s.history.map((r) => r.date),
+              x: s.history.map(historyLabel),
               y: s.history.map((r) =>
                 r.pressure === null
                   ? null
